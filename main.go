@@ -15,24 +15,41 @@ var message string
 //go:embed assets/html/*
 var assets embed.FS
 
+var (
+	DirPerm = os.FileMode(0755)
+	FilePerm = os.FileMode(0644)
+)
+
 func writeEmbedFS(dir embed.FS) {
 	tmp, err := os.MkdirTemp("", "example")
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer os.RemoveAll(tmp) // clean up
+	defer os.RemoveAll(tmp) // clean up
 
 	fmt.Println(tmp)
-
-	fs.WalkDir(dir, "assets", fs.WalkDirFunc(func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(dir, "assets", func(path string, d fs.DirEntry, err error) error {
 		cpath := filepath.Join(tmp, path)
 		if d.IsDir() {
-			os.Mkdir(cpath, 0755)
-		} else {
-			os.WriteFile(cpath, []byte(""), 0644)
+			if err := os.Mkdir(cpath, DirPerm); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		// if file
+		data, err := fs.ReadFile(dir, path)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(cpath, data, FilePerm); err != nil {
+			return err
 		}
 		return nil
-	}))
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
