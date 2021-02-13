@@ -20,18 +20,15 @@ var (
 	FilePerm = os.FileMode(0644)
 )
 
-func writeEmbedFS(dir embed.FS) {
-	tmp, err := os.MkdirTemp("", "example")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(tmp) // clean up
+func WriteEmbedFiles(dir embed.FS, prefix, dest string) error {
+	walkFunc := func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-	fmt.Println(tmp)
-	err = fs.WalkDir(dir, "assets", func(path string, d fs.DirEntry, err error) error {
-		cpath := filepath.Join(tmp, path)
+		dpath := filepath.Join(dest, path)
 		if d.IsDir() {
-			if err := os.Mkdir(cpath, DirPerm); err != nil {
+			if err := os.Mkdir(dpath, DirPerm); err != nil {
 				return err
 			}
 			return nil
@@ -42,12 +39,26 @@ func writeEmbedFS(dir embed.FS) {
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(cpath, data, FilePerm); err != nil {
+		if err := os.WriteFile(dpath, data, FilePerm); err != nil {
 			return err
 		}
 		return nil
-	})
+	}
+	if err := fs.WalkDir(dir, prefix, walkFunc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeEmbedFS(dir embed.FS) {
+	tmp, err := os.MkdirTemp("", "example")
 	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmp) // clean up
+
+	fmt.Println(tmp)
+	if err := WriteEmbedFiles(dir, "assets", tmp); err != nil {
 		log.Fatal(err)
 	}
 }
