@@ -1,4 +1,4 @@
-GOCMD := go1.16rc1
+GOCMD := go1.16
 
 .PHONY: build
 build:
